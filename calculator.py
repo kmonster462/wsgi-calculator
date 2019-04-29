@@ -40,18 +40,55 @@ To submit your homework:
 
 
 """
-
+import traceback
+import operator
+from functools import reduce
 
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
 
     # TODO: Fill sum with the correct value, based on the
     # args provided.
-    sum = "0"
+    args = [int(num) for num in args]
+    return str(reduce(operator.add, args))
 
-    return sum
 
-# TODO: Add functions for handling more arithmetic operations.
+def multiply(*args):
+    args = [int(num) for num in args]
+    return str(reduce(operator.mul, args))
+
+
+def subtract(*args):
+    args = [int(num) for num in args]
+    return str(reduce(operator.sub, args))
+
+
+def divide(*args):
+    args = [int(num) for num in args]
+    return str(reduce(operator.truediv, args))
+
+
+
+def index():
+    """
+    Landing page instructions for how to use the calculator site
+
+    """
+    body="""
+    <html>
+        <div class="container-fluid"> 
+            <body>
+                <h1>Kate's Super Awesome Calculator Website</h1>           
+                <h5>Welcome to Kate's Super Awesome Calculator. You can add, multiply, subtract, and divide numbers 
+                based on what you type in the URL path.<br>
+                For example, if you want to add 4 and 6, you would type: </h5>
+                <a href=http://localhost:8080/add/4/6>http://localhost:8080/add/4/6</a>
+            </body>
+        </div>
+    </html>"""
+
+    return body
+
 
 def resolve_path(path):
     """
@@ -63,12 +100,50 @@ def resolve_path(path):
     # examples provide the correct *syntax*, but you should
     # determine the actual values of func and args using the
     # path.
-    func = add
-    args = ['25', '32']
+    operations = {
+        "" : index,
+        "add": add,
+        "subtract": subtract,
+        "multiply": multiply,
+        "divide": divide
+    }
+
+    path = path.strip("/").split("/")
+
+    func_name = path[0]
+    args = path[1:]
+
+    try:
+        func = operations[func_name]
+    except KeyError:
+        raise NameError
 
     return func, args
 
+
 def application(environ, start_response):
+    headers = [('Content-type', 'text/html')]
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+        func, args = resolve_path(path)
+        body = func(*args)
+        status = "200 OK"
+    except NameError:
+        status = "404 Not Found"
+        body = "<h1> Not Found</h>"
+    except Exception:
+        status = "500 Internal Server Error"
+        body = "<h1>Internal Server Error</h>"
+        print(traceback.format_exc())
+    # except ZeroDivisionError:
+    #     status = "406 Not Acceptable"
+    #     body = "<h1> Cannot divide by zero.</h1>"
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+        return [body.encode('utf8')]
     # TODO: Your application code from the book database
     # work here as well! Remember that your application must
     # invoke start_response(status, headers) and also return
@@ -76,9 +151,9 @@ def application(environ, start_response):
     #
     # TODO (bonus): Add error handling for a user attempting
     # to divide by zero.
-    pass
+
 
 if __name__ == '__main__':
-    # TODO: Insert the same boilerplate wsgiref simple
-    # server creation that you used in the book database.
-    pass
+    from wsgiref.simple_server import make_server
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
